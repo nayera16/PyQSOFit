@@ -3,6 +3,9 @@
 .AppleDouble
 .LSOverride
 
+# Large local catalogues
+Target_lists/dr16q_prop_May01_2024.fits.gz
+
 # Icon must end with two \r
 Icon
 
