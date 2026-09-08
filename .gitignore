@@ -239,3 +239,8 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+
+# Nayera additions
+
+.pdf
