@@ -1,0 +1,2 @@
+target,target_ra_deg,target_dec_deg,expected_nobs,found_nobs,published_selected_sn,published_selection,plate,mjd,fiberid,run2d,specobjid,sdss_ra_deg,sdss_dec_deg,separation_arcsec,sdss_sn_median_r,selected,output_path
+J213023.61+122252.0,322.59837500,12.38111111,1,1,21.24,DR7,731,52460,327,26,823122758249506816,322.59843000,12.38120800,0.3988,21.23645,True,/Users/nayera/PyQSOFit/CIV_galaxy_spectra_targets/zuo_civ_data/spec-0731-52460-0327.fits

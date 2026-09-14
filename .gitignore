@@ -242,5 +242,4 @@ cython_debug/
 
 
 # Nayera additions
-
-.pdf
+*.pdf

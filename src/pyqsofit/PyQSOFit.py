@@ -549,6 +549,14 @@ class QSOFit():
         # Set fitting wavelength range
         if wave_range is not None:
             self._WaveTrim(self.lam, self.flux, self.err, self.z)
+        # Preserve the spectrum for display, including manually masked pixels.
+        self.wave_plot = self.lam.copy() / (1 + self.z)
+        self.flux_plot = self.flux.copy()
+        if deredden == True and self.ra != -999. and self.dec != -999.:
+            dustmap = sfdmap.SFDMap(dustmap_path)
+            self.flux_plot = pyasl.unred(self.lam, self.flux_plot, dustmap.ebv(self.ra, self.dec))
+        self.flux_plot *= (1 + self.z)
+
         # Set manual wavelength mask
         if wave_mask is not None:
             self._WaveMsk(self.lam, self.flux, self.err, self.z)
@@ -2130,33 +2138,27 @@ class QSOFit():
                     axn[1][c].text(0.02, 0.6, fr'$S/N_{{\rm{{br}}}}={np.round(snr, 1)}$',
                                    fontsize=12, transform=axn[1][c].transAxes)
 
-                # Wave mask
+                # Display masked pixels above the shading, but omit them from residuals.
                 if self.wave_mask is not None:
-
-                    for j, w in enumerate(self.wave_mask):
-
-                        axn[1][c].axvspan(w[0], w[1], color='k', alpha=0.25)
-                        # Plot avoiding drawing lines between masked values
-                        label_data = None
-                        label_resid = None
-
-                        if j == 0:
-                            mask = self.wave < w[0]
-                            label_data = 'data'
-                            label_resid = 'resid'
-                            axn[1][c].plot(self.wave[mask], self.line_flux[mask], 'k', label=label_data, lw=1, zorder=2)
-                        if j == len(self.wave_mask) - 1:
-                            mask = self.wave_prereduced > w[1]
-                            axn[1][c].plot(self.wave[mask], self.line_flux[mask], 'k', label=label_data, lw=1, zorder=2)
-                        else:
-                            mask = (self.wave > w[1]) & (self.wave < self.wave_mask[j + 1, 0])
-                            axn[1][c].plot(self.wave[mask], self.line_flux[mask], 'k', label=label_data, lw=1, zorder=2)
-
-                        # Residual
-                        if plot_residual:
-                            axn[1][c].axhline(-5, color='k', zorder=0, lw=0.5)
-                            axn[1][c].plot(self.wave[mask], self.line_flux[mask] - self.f_line_model[mask] - 5, 'gray',
-                                           label=label_resid, linestyle='dotted', lw=1, zorder=3)
+                    for w in self.wave_mask:
+                        axn[1][c].axvspan(w[0], w[1], color='k', alpha=0.25, zorder=0)
+                    # Interpolate the removed continuum/host onto the display grid.
+                    background = np.interp(self.wave_plot, self.wave,
+                                           np.interp(self.wave, self.wave_prereduced,
+                                                     self.flux_prereduced) - self.line_flux)
+                    axn[1][c].plot(self.wave_plot, self.flux_plot - background,
+                                   'k', label='data', lw=1, zorder=2)
+                    if plot_residual:
+                        residual = self.line_flux - self.f_line_model - 5
+                        # Break residual lines across gaps excluded from the fit.
+                        residual = residual.copy()
+                        for w in self.wave_mask:
+                            edge = np.searchsorted(self.wave, w[0])
+                            if edge < len(residual):
+                                residual[edge] = np.nan
+                        axn[1][c].axhline(-5, color='k', zorder=0, lw=0.5)
+                        axn[1][c].plot(self.wave, residual, 'gray', label='resid',
+                                       linestyle='dotted', lw=1, zorder=3)
                 else:
 
                     axn[1][c].plot(self.wave, self.line_flux, 'k', label='data', lw=1, zorder=2)
@@ -2174,24 +2176,9 @@ class QSOFit():
 
         # Main figure
         if self.wave_mask is not None:
-
-            for j, w in enumerate(self.wave_mask):
-
-                ax.axvspan(w[0], w[1], color='k', alpha=0.25)
-
-                # Plot avoiding drawing lines between masked values
-                if j == 0:
-                    mask = self.wave_prereduced < w[0]
-                    ax.plot(self.wave_prereduced[mask], self.flux_prereduced[mask], 'k', label='data', lw=1, zorder=2)
-                    # ax.plot(self.wave_prereduced[mask], self.err_prereduced[mask], 'gray', label='error', lw=1, zorder=1)
-                if j == len(self.wave_mask) - 1:
-                    mask = self.wave_prereduced > w[1]
-                    ax.plot(self.wave_prereduced[mask], self.flux_prereduced[mask], 'k', lw=1, zorder=2)
-                    # ax.plot(self.wave_prereduced[mask], self.err_prereduced[mask], 'gray', lw=1, zorder=1)
-                else:
-                    mask = (self.wave_prereduced > w[1]) & (self.wave_prereduced < self.wave_mask[j + 1, 0])
-                    ax.plot(self.wave_prereduced[mask], self.flux_prereduced[mask], 'k', lw=1, zorder=2)
-                    # ax.plot(self.wave_prereduced[mask], self.err_prereduced[mask], 'gray', lw=1, zorder=1)
+            for w in self.wave_mask:
+                ax.axvspan(w[0], w[1], color='k', alpha=0.25, zorder=0)
+            ax.plot(self.wave_plot, self.flux_plot, 'k', label='data', lw=1, zorder=2)
 
         else:
 
